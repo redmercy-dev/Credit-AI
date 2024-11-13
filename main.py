@@ -65,6 +65,35 @@ def create_assistant(file_ids):
         }
     )
     return assistant.id
+def create_vector_store_for_file(file_id: str, name_prefix: str = "Message") -> Optional[str]:
+    """
+    Create a vector store for a single file with a 7-day expiration policy.
+    Returns the vector store ID if successful, None otherwise.
+    """
+    try:
+        vector_store = client.beta.vector_stores.create(
+            name=f"{name_prefix}-{file_id}",
+            expires_after={
+                "anchor": "last_active_at",
+                "days": 7
+            }
+        )
+        
+        # Create a batch with the single file and wait for processing
+        batch = client.beta.vector_stores.file_batches.create_and_poll(
+            vector_store_id=vector_store.id,
+            file_ids=[file_id]
+        )
+        
+        if batch.status == "completed":
+            return vector_store.id
+        else:
+            st.error(f"Failed to process file in vector store: {batch.status}")
+            return None
+    except Exception as e:
+        st.error(f"Error creating vector store: {str(e)}")
+        return None
+
 
 def handle_tool_outputs(run):
     tool_outputs = []
