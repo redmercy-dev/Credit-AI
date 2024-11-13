@@ -24,86 +24,46 @@ available_functions = {
 }
 
 instructions = """
-Your role is to access the credit report uploaded by the user using file search and to generate his assessment report based on his credit report. 
-This the format to respect when generating the assessment report that you will send to the user 
-Assessment report Format 
-************
-Introduction
+You are an Assessment Document Generator whose primary function is to create detailed credit assessment reports for users based on the credit reports they upload.
+Begin by utilizing the file search functionality to locate and access the credit report provided by the user. 
+Once accessed, extract all relevant data from the report, including personal identifiers such as the user's name and 
+contact information, as well as credit information like the current credit score, risk category, credit inquiries, adverse listings, payment history, and credit 
+utilization rates.
 
-Greet recipient by name (from credit report)
-Introduce yourself as Mandy, Credit Analysis Assistant from Credit Fix
-Acknowledge membership status and benefits
-State report purpose: outline credit improvement plan
+When generating the assessment report, adhere to the following structure to maintain consistency and clarity:
 
-Credit Report Summary
+Assessment Report
 
-Current score and risk category
-Key Issues:
+Introduction: Start by greeting the recipient by their first name, which should be retrieved from the extracted data include the username do not use dear client .
+Introduce yourself as Mandy, Credit Analysis Assistant from Credit Fix, and acknowledge the user's membership status, highlighting any associated benefits. Clearly state the purpose of the report, which is to outline a personalized credit improvement plan.
 
-Credit inquiries count/frequency
-Adverse listings details
-Missed payments/arrears
-Credit utilization rates
+Credit Report Summary: Present the user's current credit score and indicate the corresponding risk category, such as Excellent, Good, Fair, or Poor. 
+Identify and detail the key issues affecting the user's credit, including the count and frequency of credit inquiries, details of any adverse listings like bankruptcies or charge-offs, any missed payments or accounts in arrears, and the current credit utilization percentage. Provide an explanation of how each of these key issues impacts the user's overall creditworthiness.
 
-Impact on creditworthiness explanation
+Personalized Action Plan: Offer tailored recommendations for improving the user's credit. 
+Advise the user to follow the provided application strategies guide and recommend waiting six to twelve months before making new credit 
+applications to enhance their credit standing. Suggest using a budget planning tool to manage finances effectively and setting up automated payments to ensure 
+timely bill payments. Encourage the user to follow the optimization module to reduce their credit utilization rates.
 
-Personalized Action Plan
+Monitoring & Resources: Inform the user about the availability of ongoing monthly credit monitoring services to track their progress. 
+Schedule a follow-up analysis after 90 days to assess improvements and make any necessary adjustments. Provide access to various tools, 
+including credit report guides to help users understand their credit reports, dispute templates for addressing inaccuracies, debt settlement tactics, 
+and financial planning tools for effective financial management.
 
-Resolve Adverse Listings
+Closing: Summarize the recommended action steps for the user to follow. If applicable, invite the user to join or renew their membership, 
+emphasizing additional benefits. Provide contact information for further assistance, such as email addresses or phone numbers. 
+Include relevant visual aids like charts and graphs to illustrate key points and ensure that all personal identifiers are appropriately used, as extracted from the user's uploaded credit report.
 
-Use Debt Settlement templates
-Negotiate with creditors
-
-Manage Credit Inquiries
-
-Follow Application Strategies guide
-Wait 6-12 months before new applications
-
-Dispute Errors
-
-Use Credit Fix resources
-Contact bureaus:
+Additionally, leverage all available resources from Credit Fix to enhance the report's quality and usefulness. 
+Include contact information for major credit bureaus to facilitate any necessary communications:
 
 Experian: consumer@experian.co.za
 TransUnion: legal@transunion.co.za
 XDS: disputes@xds.co.za
-
-Improve Payment History
-
-Use Budget Planning Tool
-Set up automated payments
-
-Reduce Credit Utilization
-
-Follow Optimization module
-Keep usage under 30%
-
-Monitoring & Resources
-
-Monthly credit monitoring
-90-day follow-up analysis
-Available tools:
-
-Credit report guides
-Dispute templates
-Debt settlement tactics
-Financial planning tools
-
-Closing
-
-Action steps summary
-Membership invitation (if applicable)
-Contact information
-
-Technical Requirements
-
-Format: PDF using ReportLab
-Length: 4 pages
-Include visualizations and plots
-Use personal identifiers from the credit report uploaded by the user
-************
-Note: Extract relevant information from provided examples for direct report writing.
-ADD details in each section to help the client understand."""
+Ensure the report is professionally formatted with clear headings and sections, using concise and user-friendly language. Incorporate visual elements
+where appropriate to enhance comprehension. By following these detailed instructions and maintaining the specified format, you will generate
+a thorough and personalized credit assessment report that effectively assists users in improving their credit profiles.
+"""
 
 def create_assistant(file_ids):
     vector_store = client.beta.vector_stores.create(
@@ -216,7 +176,6 @@ async def get_agent_response(assistant_id: str, user_message: str, file_id: Opti
                 content=user_message,
                 attachments=attachments
             )
-
             # Create run (without tool_resources)
             run = client.beta.threads.runs.create(
                 thread_id=st.session_state.user_thread.id,
@@ -263,7 +222,6 @@ async def get_agent_response(assistant_id: str, user_message: str, file_id: Opti
     except Exception as e:
         st.error(f"Error in get_agent_response: {str(e)}")
         return f"Error: {str(e)}", [], []
-
 def main():
     st.title("Credit Analysis Assistant")
     st.sidebar.title("Assistant Configuration")
@@ -299,27 +257,29 @@ def main():
             st.sidebar.success(f"Using assistant with ID: {assistant_id}")
 
     # Display chat history
-    for message in st.session_state.messages:
+    for idx, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if "downloads" in message:
-                for file_name, file_content in message["downloads"]:
+                for file_idx, (file_name, file_content) in enumerate(message["downloads"]):
                     st.download_button(
                         label=f"Download {file_name}",
                         data=file_content,
                         file_name=file_name,
-                        mime="application/octet-stream"
+                        mime="application/octet-stream",
+                        key=f"download_{idx}_{file_idx}"  # Added unique key
                     )
                     if file_name.endswith('.html'):
                         st.components.v1.html(file_content.decode(), height=300, scrolling=True)
             if "images" in message:
-                for image_name, image_data in message["images"]:
+                for img_idx, (image_name, image_data) in enumerate(message["images"]):
                     st.image(image_data)
                     st.download_button(
                         label=f"Download {image_name}",
                         data=image_data,
                         file_name=image_name,
-                        mime="image/png"
+                        mime="image/png",
+                        key=f"image_download_{idx}_{img_idx}"  # Added unique key
                     )
 
     # File upload handling
@@ -349,23 +309,27 @@ def main():
                 )
                 message_placeholder.markdown(response)
                 
-                for file_name, file_content in download_links:
+                # Add unique keys for current message downloads
+                for idx, (file_name, file_content) in enumerate(download_links):
                     st.download_button(
                         label=f"Download {file_name}",
                         data=file_content,
                         file_name=file_name,
-                        mime="application/octet-stream"
+                        mime="application/octet-stream",
+                        key=f"current_download_{len(st.session_state.messages)}_{idx}"
                     )
                     if file_name.endswith('.html'):
                         st.components.v1.html(file_content.decode(), height=300, scrolling=True)
                 
-                for image_name, image_data in images:
+                # Add unique keys for current message images
+                for idx, (image_name, image_data) in enumerate(images):
                     st.image(image_data)
                     st.download_button(
                         label=f"Download {image_name}",
                         data=image_data,
                         file_name=image_name,
-                        mime="image/png"
+                        mime="image/png",
+                        key=f"current_image_{len(st.session_state.messages)}_{idx}"
                     )
 
             st.session_state.messages.append({
@@ -376,6 +340,7 @@ def main():
             })
         else:
             st.warning("Please create a new assistant or enter an existing assistant ID before chatting.")
+
 
 if __name__ == "__main__":
     main()
